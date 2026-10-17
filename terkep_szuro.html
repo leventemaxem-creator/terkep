@@ -24,7 +24,7 @@
 }
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0; padding:0; background:transparent}
-body{font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif}
+body{font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif; overflow:hidden}
 #wrap{max-width:720px; margin:0 auto; background:var(--paper)}
 #map{display:block; width:100%; height:auto; aspect-ratio:752 / 962.8}
 .country{
@@ -126,16 +126,35 @@ body{font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif}
   var params = new URLSearchParams(window.location.search);
   applyLang(params.get('lang') || 'hu');
 
-  // ---- let the host page change language or clear the selection without reloading the iframe ----
+  // ---- theme: default to OS preference, but let the host page override it ----
+  function applyTheme(theme){
+    if(theme === 'dark' || theme === 'light'){
+      document.documentElement.setAttribute('data-theme', theme);
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  }
+
+  // ---- let the host page change language/theme or clear the selection without reloading the iframe ----
   window.addEventListener('message', function(e){
     var d = e.data;
     if(!d || typeof d !== 'object') return;
     if(d.type === 'set-lang'){ applyLang(d.lang); }
+    if(d.type === 'set-theme'){ applyTheme(d.theme); }
     if(d.type === 'clear-selection'){ select(null); selected = null; countries.forEach(function(c){c.classList.remove('is-selected');}); }
   });
 
-  // let the host page know the widget is ready
+  // ---- tell the host page our actual rendered height, so it can size the iframe to fit (no scrollbar, no empty gap) ----
+  var wrap = document.getElementById('wrap');
+  function reportSize(){
+    post({type:'resize', height: Math.ceil(wrap.getBoundingClientRect().height)});
+  }
+  if(window.ResizeObserver){ new ResizeObserver(reportSize).observe(wrap); }
+  else { window.addEventListener('resize', reportSize); }
+
+  // let the host page know the widget is ready (host can reply with initial theme)
   post({type:'ready'});
+  reportSize();
 })();
 </script>
 </body>
